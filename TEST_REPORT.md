@@ -4,9 +4,9 @@ Date: 19 October 2026. Version: 1.0.0. Package: `dev.magesh.win95`.
 
 ## Result and limits
 
-The source builds into a signed APK. The automated suite passes 17 tests, and Android lint reports zero errors with eight warnings. These are host-based tests, including real native Skia rendering under Robolectric; they are **not tests performed on a Samsung phone**.
+The source builds into a signed APK. All 17 host-based tests pass, including native Skia rendering under Robolectric. GitHub Actions also passed four instrumentation tests on a booted Android 16 emulator. Android lint reports zero errors and eight warnings. These results are **not tests performed on a Samsung phone**.
 
-No Galaxy S24 Ultra / One UI 8.5 device was connected. This environment had no `/dev/kvm`. An Android 16 x86_64 emulator was installed and attempted with software CPU emulation, but it did not reach a usable boot. Consequently installation on a running Android system, system role selection, real installed-app launching, Samsung gestures and hardware-specific behavior remain unverified. The included device suites compile but were not executed. This build must not be described as completely tested or guaranteed bug-free.
+No Galaxy S24 Ultra / One UI 8.5 device was connected. The original workspace lacked `/dev/kvm`, so its software emulator did not reach usable boot. After publication, GitHub's KVM-enabled runner successfully booted Android 16 and executed `LauncherDeviceTest` (four tests): HOME intent declaration, Start/menu/tool behavior, note persistence and task restoration, and window geometry. The alternative SDK-only instrumentation runner was not executed. CI tested its own Gradle debug APK built from the same production sources; the bundled SDK-built APK was verified by signature, alignment and SHA-256, but was not separately installed in that CI run. Samsung-specific behavior, system role selection and real installed-app launching still require device checks. This build must not be described as completely tested or guaranteed bug-free.
 
 ## Executed checks
 
@@ -17,6 +17,7 @@ No Galaxy S24 Ultra / One UI 8.5 device was connected. This environment had no `
 | Calculator regression tests | JUnit 4.13.2, 6 tests | Passed |
 | Activity behavior and saved state | Robolectric 4.16, API 35, 7 tests | Passed |
 | Layout geometry and native rendering | Robolectric 4.16, API 36, 4 tests | Passed |
+| Android 16 instrumentation | GitHub Actions KVM-enabled x86_64 emulator, 4 tests | Passed |
 | Android lint | API 36 project | 0 errors, 8 warnings |
 | APK signature | Android apksigner, APK Signature Scheme v3 | Passed |
 | ZIP structure and resource table | Python zipfile, Android aapt | Passed |
@@ -41,7 +42,7 @@ The lint warnings are: one API-specific attribute warning for the Android 13+ Ba
 
 ## Device checks still required
 
-All items below are **not executed**:
+The Samsung-specific acceptance steps below are **not executed on the S24 Ultra**. Generic Android emulator coverage is listed above:
 
 1. Install on the S24 Ultra, open normally, select Retro 95 in the Android Home role chooser, press Home and reboot to verify the default remains selected.
 2. Verify every expected personal-profile app appears; launch several real apps, return Home, and use Samsung Recents and gesture navigation. Check the three-button navigation mode separately.
@@ -63,3 +64,9 @@ The APK is development-signed. It is architecture-independent Java bytecode, wit
 SHA-256: `b950cdb148877623ee510059c15b22e0faa49d49dd360c961187c8eb3eba26f4`.
 
 The project is published to https://github.com/maggimagesh/Win95-retro-apk. The results above are local verification results; see the repository Actions tab for independent CI results.
+
+## GitHub CI verification
+
+Code commit: `52ce79591a15dc6e1a20dd5dbb1131cdae16ce3d`.
+
+[Android verification run #2](https://github.com/maggimagesh/Win95-retro-apk/actions/runs/39265945640): build job **passed**; device-tests job **passed**, with four tests completed on emulator-5554 (Android 16). The first run's SDK setup failure was fixed by requesting `platform-tools` without the retired `tools` package. This documentation-only update does not change application source or the bundled APK.
