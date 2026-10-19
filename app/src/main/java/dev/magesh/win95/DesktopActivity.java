@@ -5,6 +5,10 @@ import android.app.role.RoleManager;
 import android.content.*;
 import android.content.pm.*;
 import android.graphics.Color;
+import android.graphics.Rect;
+import androidx.window.java.layout.WindowInfoTrackerCallbackAdapter;
+import androidx.window.layout.*;
+import androidx.core.util.Consumer;
 import android.net.Uri;
 import android.os.*;
 import android.provider.Settings;
@@ -19,6 +23,12 @@ import static dev.magesh.win95.RetroStyle.*;
 
 public class DesktopActivity extends Activity {
     private FrameLayout workspace, root;
+    private WindowInfoTrackerCallbackAdapter foldTracker;
+    private final Consumer<WindowLayoutInfo> foldListener=this::onWindowLayout;
+    private List<FoldingFeature> folds=Collections.emptyList();
+    private android.graphics.Insets safeInsets=android.graphics.Insets.NONE;
+    private int keyboardBottom;
+
     private LinearLayout shell, taskbar, window, startMenu, windowBody;
     private GridLayout desktop;
     private Button taskButton, startButton;
@@ -52,16 +62,19 @@ public class DesktopActivity extends Activity {
         if(state!=null) { active=state.getString("active",""); query=state.getString("query",""); calculation=state.getString("calculation",""); minimized=state.getBoolean("minimized"); maximized=state.getBoolean("maximized"); }
         buildDesktop();
         if(Build.VERSION.SDK_INT>=33) getOnBackInvokedDispatcher().registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::back);
+        foldTracker=new WindowInfoTrackerCallbackAdapter(WindowInfoTracker.getOrCreate(this));
         loadApps();
         try { launcher.registerCallback(appCallback,handler); callbackRegistered=true; } catch(SecurityException ignored) { }
     }
+    @Override protected void onStart(){super.onStart();if(foldTracker!=null)foldTracker.addWindowLayoutInfoListener(this,getMainExecutor(),foldListener);}
+    @Override protected void onStop(){if(foldTracker!=null)foldTracker.removeWindowLayoutInfoListener(foldListener);super.onStop();}
     @Override protected void onResume(){super.onResume(); handler.removeCallbacks(ticker); ticker.run(); loadApps();}
     @Override protected void onPause(){super.onPause();handler.removeCallbacks(ticker);}
     @Override protected void onDestroy(){handler.removeCallbacksAndMessages(null); if(callbackRegistered) launcher.unregisterCallback(appCallback); loader.shutdownNow();super.onDestroy();}
     @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);closeStart(); hideKeyboard(); if(window!=null) { minimized=true; window.setVisibility(View.GONE); }}
     @Override protected void onSaveInstanceState(Bundle b){b.putString("active",active);b.putString("query",query);b.putString("calculation",calculation);b.putBoolean("minimized",minimized);b.putBoolean("maximized",maximized);super.onSaveInstanceState(b);}
     // API 33+ uses the platform OnBackInvokedDispatcher registered above.
-    // This override supports Android 11/12 without requiring AndroidX at runtime.
+    // Android 12/12L uses the legacy Back callback.
     @android.annotation.SuppressLint("GestureBackNavigation")
     @Override public void onBackPressed(){back();}
     private void back(){if(startMenu!=null)closeStart();else if(!active.isEmpty())closeWindow();}
@@ -70,11 +83,12 @@ public class DesktopActivity extends Activity {
     private LinearLayout horizontal(){LinearLayout l=new LinearLayout(this);l.setOrientation(LinearLayout.HORIZONTAL); l.setGravity(Gravity.CENTER_VERTICAL);return l;}
     private void buildDesktop(){
         root=new FrameLayout(this);root.setBackgroundColor(prefs.getInt("wallpaper",TEAL));root.setFocusableInTouchMode(true);
-        shell=vertical();root.addView(shell,new FrameLayout.LayoutParams(-1,-1));
+        shell=vertical();shell.setTag("desktop-shell");root.addView(shell,new FrameLayout.LayoutParams(-1,-1));
+        root.addOnLayoutChangeListener((v,l,t,r,b,ol,ot,or,ob)->{if(r-l!=or-ol||b-t!=ob-ot)layoutDesktop();});
         root.setOnApplyWindowInsetsListener((v,i)->{
-            android.graphics.Insets safe=i.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());
-            android.graphics.Insets ime=i.getInsets(WindowInsets.Type.ime());
-            shell.setPadding(safe.left,safe.top,safe.right,Math.max(safe.bottom,ime.bottom));return i;
+            safeInsets=i.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());
+            keyboardBottom=i.getInsets(WindowInsets.Type.ime()).bottom;
+            layoutDesktop();return i;
         });
         workspace=new FrameLayout(this); workspace.setTag("workspace");shell.addView(workspace,new LinearLayout.LayoutParams(-1,0,1));
         workspace.setOnClickListener(v->closeStart());
@@ -83,7 +97,7 @@ public class DesktopActivity extends Activity {
         desktop=new GridLayout(this);desktop.setTag("desktop"); desktop.setPadding(d(6),d(10),d(6),d(12));desktopScroll.addView(desktop);
         desktop.setOnClickListener(v->closeStart()); desktop.setOnLongClickListener(v->{open("settings");return true;});
         workspace.addOnLayoutChangeListener((v,l,t,r,b,ol,ot,or,ob)->{if(r-l!=or-ol || b-t!=ob-ot){renderIcons();layoutWindow();layoutStart();}});
-        taskbar=horizontal();taskbar.setBackground(new Bevel(false,SILVER));taskbar.setPadding(d(4),d(3),d(4),d(3));
+        taskbar=horizontal();taskbar.setTag("taskbar");taskbar.setBackground(new Bevel(false,SILVER));taskbar.setPadding(d(4),d(3),d(4),d(3));
         shell.addView(taskbar,new LinearLayout.LayoutParams(-1,-2));
         startButton=button(this,"▦ Start");startButton.setTypeface(null,android.graphics.Typeface.BOLD);startButton.setTag("start");startButton.setOnClickListener(v->toggleStart());taskbar.addView(startButton,new LinearLayout.LayoutParams(-2,-2));
         taskButton=button(this,"");taskButton.setTag("task");taskButton.setSingleLine(true);taskButton.setEllipsize(TextUtils.TruncateAt.END);
@@ -92,11 +106,36 @@ public class DesktopActivity extends Activity {
         clock=text(this,"",13,Color.BLACK);clock.setGravity(Gravity.CENTER);clock.setPadding(d(8),0,d(8),0);clock.setBackground(new Bevel(true,SILVER));clock.setTag("clock");clock.setContentDescription("Date and time");clock.setOnClickListener(v->open("clock"));taskbar.addView(clock,new LinearLayout.LayoutParams(-2,d(48)));
         setContentView(root);root.requestApplyInsets();renderIcons();if(!active.isEmpty()){String saved=active;boolean savedMinimized=minimized;active="";open(saved);minimized=savedMinimized;window.setVisibility(minimized?View.GONE:View.VISIBLE);}else taskButton.setVisibility(View.INVISIBLE);
     }
+    // WindowManager reports bounds in window coordinates; root may have a window offset.
+    void onWindowLayout(WindowLayoutInfo info){
+        List<FoldingFeature> updated=new ArrayList<>();
+        for(DisplayFeature feature:info.getDisplayFeatures())if(feature instanceof FoldingFeature)updated.add((FoldingFeature)feature);
+        folds=updated;layoutDesktop();
+    }
+    private void layoutDesktop(){
+        if(root==null||root.getWidth()==0||root.getHeight()==0)return;
+        int[] origin=new int[2];root.getLocationInWindow(origin);
+        List<Rect> barriers=new ArrayList<>();
+        for(FoldingFeature fold:folds)if(fold.isSeparating()||fold.getOcclusionType()==FoldingFeature.OcclusionType.FULL){
+            Rect bounds=new Rect(fold.getBounds());bounds.offset(-origin[0],-origin[1]);barriers.add(bounds);
+        }
+        Rect safe=new Rect(safeInsets.left,safeInsets.top,Math.max(safeInsets.left,root.getWidth()-safeInsets.right),Math.max(safeInsets.top,root.getHeight()-Math.max(safeInsets.bottom,keyboardBottom)));
+        Rect pane=DesktopGeometry.largestPane(safe,barriers,d(8));
+        FrameLayout.LayoutParams old=(FrameLayout.LayoutParams)shell.getLayoutParams();
+        if(old.width!=pane.width()||old.height!=pane.height()||old.leftMargin!=pane.left||old.topMargin!=pane.top){
+            FrameLayout.LayoutParams params=new FrameLayout.LayoutParams(pane.width(),pane.height(),Gravity.TOP|Gravity.LEFT);
+            params.leftMargin=pane.left;params.topMargin=pane.top;shell.setLayoutParams(params);
+        }
+        boolean compact=pane.width()<d(360);
+        clock.setVisibility(compact?View.GONE:View.VISIBLE);
+        startButton.setText(pane.width()<d(280)?"▦":"▦ Start");startButton.setContentDescription("Start menu");
+    }
+    private int iconHeight(){return d((prefs.getBoolean("large",false)?116:100)+Math.max(0,getResources().getConfiguration().fontScale-1)*36);}
     private void renderIcons(){
         if(desktop==null || workspace.getWidth()==0)return;
-        int count=Math.max(2,Math.min(8,(workspace.getWidth()-d(12))/d(prefs.getBoolean("large",false)?116:96)));
+        int count=Math.max(1,Math.min(12,(workspace.getWidth()-d(12))/d(prefs.getBoolean("large",false)?116:96)));
         desktop.removeAllViews();desktop.setOrientation(GridLayout.VERTICAL);
-        int iconHeight=d(prefs.getBoolean("large",false)?116:100);
+        int iconHeight=iconHeight();
         int total=6;Set<String> savedPins=prefs.getStringSet("pinned",Collections.emptySet());for(AppEntry app:apps)if(savedPins.contains(app.key))total++;
         desktop.setRowCount(Math.max(Math.max(1,workspace.getHeight()/iconHeight),(total+count-1)/count));desktop.setColumnCount(count);
         addDesktopIcon("computer","My Computer",()->open("apps"),count,null);
@@ -114,7 +153,7 @@ public class DesktopActivity extends Activity {
         else { ImageView icon=new ImageView(this);try{icon.setImageDrawable(app.info.getBadgedIcon(0));}catch(RuntimeException ignored){}tile.addView(icon,new LinearLayout.LayoutParams(d(38),d(38))); }
         TextView label=text(this,title,13,Color.WHITE);label.setGravity(Gravity.CENTER);label.setMaxLines(2);label.setEllipsize(TextUtils.TruncateAt.END);label.setShadowLayer(1,1,1,Color.BLACK);tile.addView(label,new LinearLayout.LayoutParams(-1,-2));
         GridLayout.LayoutParams params=new GridLayout.LayoutParams(GridLayout.spec(GridLayout.UNDEFINED),GridLayout.spec(GridLayout.UNDEFINED));
-        params.width=(workspace.getWidth()-d(12))/count;params.height=d(prefs.getBoolean("large",false)?116:100);desktop.addView(tile,params);
+        params.width=(workspace.getWidth()-d(12))/count;params.height=iconHeight();desktop.addView(tile,params);
         tile.setOnClickListener(v->{closeStart();action.run();});tile.setOnLongClickListener(v->{if(app==null)open("settings");else appMenu(app);return true;});
     }
     private void loadApps(){
@@ -145,7 +184,7 @@ public class DesktopActivity extends Activity {
         startMenu=vertical();startMenu.setTag("start-menu");startMenu.setBackground(new Bevel(false,SILVER));startMenu.setPadding(d(4),d(4),d(4),d(4));
         TextView brand=text(this,"Retro 95",24,Color.WHITE);brand.setTypeface(null,android.graphics.Typeface.BOLD);brand.setBackgroundColor(NAVY);brand.setPadding(d(12),d(10),d(12),d(10));startMenu.addView(brand);
         ScrollView scroll=new ScrollView(this);LinearLayout list=vertical();scroll.addView(list);startMenu.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-        menuRow(list,"apps","Programs",()->open("apps"));menuRow(list,"notes","Documents",()->open("notes"));menuRow(list,"settings","Settings",()->open("settings"));menuRow(list,"apps","Find apps…",()->open("apps"));menuRow(list,"computer","Run…",()->open("run"));menuRow(list,"computer","Help",()->open("help"));
+        menuRow(list,"apps","Programs",()->open("apps"));menuRow(list,"notes","Documents",()->open("notes"));menuRow(list,"settings","Settings",()->open("settings"));menuRow(list,"apps","Find apps…",()->open("apps"));menuRow(list,"computer","Run…",()->open("run"));menuRow(list,"clock","Date / Time",()->open("clock"));menuRow(list,"computer","Help",()->open("help"));
         menuRow(list,"settings","Choose home app…",this::chooseHome);menuRow(list,"computer","About Retro 95",()->open("about"));
         workspace.addView(startMenu);layoutStart();startMenu.bringToFront();
     }
@@ -153,28 +192,28 @@ public class DesktopActivity extends Activity {
         LinearLayout row=horizontal();row.setPadding(d(10),0,d(10),0);row.addView(new PixelIcon(this,kind),new LinearLayout.LayoutParams(d(30),d(30)));
         Button b=button(this,label);b.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);b.setBackgroundColor(Color.TRANSPARENT);b.setOnClickListener(v->{closeStart();action.run();});row.addView(b,new LinearLayout.LayoutParams(0,d(52),1));list.addView(row);row.setOnClickListener(v->{closeStart();action.run();});
     }
-    private void layoutStart(){if(startMenu==null)return; FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(Math.min(d(310),Math.max(d(100),workspace.getWidth()-d(8))),Math.min(d(530),Math.max(d(120),workspace.getHeight()-d(6))),Gravity.BOTTOM|Gravity.START);p.setMargins(d(2),0,0,d(2));startMenu.setLayoutParams(p);}
+    private void layoutStart(){if(startMenu==null)return; FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(Math.min(d(310),Math.max(0,workspace.getWidth()-d(8))),Math.min(d(590),Math.max(0,workspace.getHeight()-d(6))),Gravity.BOTTOM|Gravity.START);p.setMargins(d(2),0,0,d(2));startMenu.setLayoutParams(p);}
     private void closeStart(){if(startMenu!=null){workspace.removeView(startMenu);startMenu=null;}}
     void open(String type){
         closeStart();closeWindow();active=type;minimized=false;
         window=vertical();window.setTag("window");window.setPadding(d(3),d(3),d(3),d(3));window.setBackground(new Bevel(false,SILVER));
         LinearLayout title=horizontal();title.setBackgroundColor(NAVY);
         TextView name=text(this,titleFor(type),14,Color.WHITE);name.setTypeface(null,android.graphics.Typeface.BOLD);name.setSingleLine(true);name.setEllipsize(TextUtils.TruncateAt.END);name.setPadding(d(7),0,d(3),0);title.addView(name,new LinearLayout.LayoutParams(0,d(48),1));
-        Button min=button(this,"_");min.setContentDescription("Minimize window");min.setTag("minimize");min.setOnClickListener(v->{minimized=true;window.setVisibility(View.GONE);hideKeyboard();});title.addView(min,new LinearLayout.LayoutParams(d(48),d(44)));
-        Button max=button(this,"□");max.setContentDescription("Maximize or restore window");max.setOnClickListener(v->{maximized=!maximized;layoutWindow();});title.addView(max,new LinearLayout.LayoutParams(d(48),d(44)));
-        Button close=button(this,"×");close.setContentDescription("Close window");close.setTag("close");close.setOnClickListener(v->closeWindow());title.addView(close,new LinearLayout.LayoutParams(d(48),d(44)));window.addView(title);
+        Button min=button(this,"_");min.setContentDescription("Minimize window");min.setTag("minimize");min.setOnClickListener(v->{minimized=true;window.setVisibility(View.GONE);hideKeyboard();});title.addView(min,new LinearLayout.LayoutParams(d(48),d(48)));
+        Button max=button(this,"□");max.setContentDescription("Maximize or restore window");max.setOnClickListener(v->{maximized=!maximized;layoutWindow();});title.addView(max,new LinearLayout.LayoutParams(d(48),d(48)));
+        Button close=button(this,"×");close.setContentDescription("Close window");close.setTag("close");close.setOnClickListener(v->closeWindow());title.addView(close,new LinearLayout.LayoutParams(d(48),d(48)));window.addView(title);
         windowBody=vertical();windowBody.setPadding(d(8),d(6),d(8),d(6));window.addView(windowBody,new LinearLayout.LayoutParams(-1,0,1));
         workspace.addView(window);layoutWindow();taskButton.setVisibility(View.VISIBLE);taskButton.setText(titleFor(type));
         switch(type){
             case "apps":buildApps();break;case "notes":buildNotes();break;case "calc":buildCalculator();break;case "settings":buildSettings();break;
             case "clock": buildClock();break;case "run":buildRun();break;case "bin":bodyText("Recycle Bin is empty.",18);bodyText("Removing a shortcut does not uninstall its app. To uninstall apps, use Android Settings.",14);break;
-            case "about":bodyText("Retro 95",28);bodyText("Version 1.0.0\nA classic desktop for your Android phone.\nCreated for Magesh.",16);bodyText("Original drawn artwork. Independent project; not affiliated with Microsoft or Samsung. No Windows software or system files are included.",13);break;
+            case "about":makeScrollable();bodyText("Retro 95",28);bodyText("Version 2.0.0\nA classic desktop for Android 12+ phones, tablets and foldables.\nCreated for Magesh.",16);bodyText("Original drawn artwork. Independent project; not affiliated with Microsoft or Samsung. No Windows software or system files are included.",13);break;
             case "help":buildHelp();break;default:break;
         }
     }
     private String titleFor(String type){switch(type){case "apps":return "My Computer";case "notes":return "Untitled - Notepad";case "calc":return "Calculator";case "settings":return "Control Panel";case "clock":return "Date / Time";case "bin":return "Recycle Bin";case "run":return "Run";case "help":return "Help";case "app-options":return "Shortcut Properties";default:return "About Retro 95";}}
     private void layoutWindow(){if(window==null)return;int w=workspace.getWidth(),h=workspace.getHeight();if(w<1||h<1)return;
-        FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(maximized?w:Math.min(d(620),w-d(12)),maximized?h:Math.min(d(640),h-d(16)),Gravity.CENTER);window.setLayoutParams(p);
+        FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(maximized?w:Math.min(d(620),Math.max(1,w-d(12))),maximized?h:Math.min(d(640),Math.max(1,h-d(16))),Gravity.CENTER);window.setLayoutParams(p);
     }
     private void closeWindow(){hideKeyboardIfReady();if(window!=null){workspace.removeView(window);window=null;windowBody=null;}active="";minimized=false;if(taskButton!=null){taskButton.setVisibility(View.INVISIBLE);taskButton.setText("");}}
     private void hideKeyboardIfReady(){if(root!=null)hideKeyboard();}
@@ -238,7 +277,7 @@ public class DesktopActivity extends Activity {
     }
     private void calendarCell(GridLayout grid,String value,boolean header){TextView cell=text(this,value,14,header?NAVY:Color.BLACK);cell.setGravity(Gravity.CENTER);if(header)cell.setTypeface(null,android.graphics.Typeface.BOLD);GridLayout.LayoutParams p=new GridLayout.LayoutParams(GridLayout.spec(GridLayout.UNDEFINED),GridLayout.spec(GridLayout.UNDEFINED,1f));p.width=0;p.height=d(36);grid.addView(cell,p);}
     private void buildRun(){makeScrollable();bodyText("Type a program name, package name, or web address.",16);EditText command=input("e.g. camera or https://example.com");command.setTag("run-input");command.setSingleLine(true);windowBody.addView(command);bodyButton("OK",()->{String s=command.getText().toString().trim();if(s.isEmpty()){toast("Enter a program or web address.");return;}if(s.startsWith("https://")||s.startsWith("http://")){safeStart(new Intent(Intent.ACTION_VIEW,Uri.parse(s)));return;}for(AppEntry app:apps)if(app.label.equalsIgnoreCase(s)||app.info.getComponentName().getPackageName().equalsIgnoreCase(s)){launch(app);return;}query=s;open("apps");});}
-    private void buildHelp(){makeScrollable();bodyText("Welcome to Retro 95",22);bodyText("1. Open Control Panel and select ‘Set Retro 95 as default launcher’. Confirm in Android’s home-app chooser.\n\n2. Tap My Computer or Start → Programs to browse your apps. Hold an app to pin it to the desktop or open its Android information.\n\n3. Use _ to minimize a window, □ to maximize, and × to close. The taskbar restores minimized windows. Back closes the menu or window.\n\n4. Notepad saves automatically. Calculator supports +, −, *, / and brackets. Run finds apps or opens http/https addresses. My Documents opens Android’s file browser.\n\n5. To return to One UI: Control Panel → Choose another home app → One UI Home.\n\nThe layout adapts to rotation, split screen, font size, display cutouts, the keyboard and navigation insets. Only one built-in tool window is active at a time.\n\nNo ads, account, analytics, network permission or broad storage permission. Work-profile apps appear when Android allows access; Samsung Secure Folder and Android Private Space are not supported.",15);}
+    private void buildHelp(){makeScrollable();bodyText("Welcome to Retro 95",22);bodyText("1. Open Control Panel and select ‘Set Retro 95 as default launcher’. Confirm in Android’s home-app chooser.\n\n2. Tap My Computer or Start → Programs to browse your apps. Hold an app to pin it to the desktop or open its Android information.\n\n3. Use _ to minimize a window, □ to maximize, and × to close. The taskbar restores minimized windows. Back closes the menu or window.\n\n4. Notepad saves automatically. Calculator supports +, −, *, / and brackets. Run finds apps or opens http/https addresses. My Documents opens Android’s file browser.\n\n5. To return to your previous launcher: Control Panel → Choose another home app → select your preferred home app.\n\nThe layout adapts to phones, tablets, rotation, split screen, font size, display cutouts, the keyboard and navigation insets. On a separating fold or hinge, the desktop uses the largest clear pane (top/left on ties). Unfolding restores the full desktop. Date / Time is always available from Start. Only one built-in tool window is active at a time.\n\nNo ads, account, analytics, network permission or broad storage permission. Work-profile apps appear when Android allows access; Samsung Secure Folder and Android Private Space are not supported.",15);}
     private void chooseHome(){try{RoleManager roles=getSystemService(RoleManager.class);if(roles.isRoleAvailable(RoleManager.ROLE_HOME)&&!roles.isRoleHeld(RoleManager.ROLE_HOME)){startActivityForResult(roles.createRequestRoleIntent(RoleManager.ROLE_HOME),95);}else safeStart(new Intent(Settings.ACTION_HOME_SETTINGS));}catch(RuntimeException e){safeStart(new Intent(Settings.ACTION_HOME_SETTINGS));}}
     private void openFiles(){Intent files=new Intent(Intent.ACTION_OPEN_DOCUMENT);files.setType("*/*");files.addCategory(Intent.CATEGORY_OPENABLE);try{startActivityForResult(files,96);}catch(ActivityNotFoundException e){toast("No document picker is installed.");}}
     @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==96&&result==RESULT_OK&&data!=null&&data.getData()!=null){Intent view=new Intent(Intent.ACTION_VIEW);view.setDataAndType(data.getData(),getContentResolver().getType(data.getData()));view.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);safeStart(view);}}

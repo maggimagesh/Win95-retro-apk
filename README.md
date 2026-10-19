@@ -1,74 +1,63 @@
-# Retro 95 Launcher
+# Retro 95 Launcher 2.0
 
-A native Android home launcher with a Windows 95-inspired desktop, Start menu, taskbar, original pixel icons and beveled tool windows. Built for Magesh's Galaxy S24 Ultra; targets Android 16 (API 36), minimum Android 11 (API 30). No native libraries: the APK works on ARM64 phones and x86_64 emulators.
+A native Android HOME launcher with a Windows 95-inspired desktop, Start menu, taskbar, original pixel icons and beveled tool windows. Version **2.0.0** supports **Android 12 / API 31 and newer**, across manufacturers, screen sizes and CPU architectures. It targets Android 16 / API 36. There are no device-model checks or native libraries.
+
+## Device and layout support
+
+- Standard phones, narrow foldable cover screens, flip and book foldables, tablets, portrait and landscape.
+- Resizable activity with no orientation lock or fixed aspect ratio. Layout follows the current app window, including split screen where the OS allows launchers to use it.
+- Jetpack WindowManager observes folding changes while the activity is started. A separating fold or fully occluding hinge places the desktop, taskbar and tool windows in the largest clear pane, with an 8 dp hinge margin. Top/left wins equal-area ties. This deliberate single-pane layout keeps controls off the hinge; it does not provide two independent desktops. An unfolded, non-separating crease uses the full available screen. Multiple reported barriers are supported.
+- System-bar, display-cutout and keyboard insets reduce the usable desktop. The icon grid reflows with width and font size; tool windows and the scrollable Start menu stay within their workspace.
+- Below 360 dp usable width the taskbar clock is hidden; **Start → Date / Time** remains available. Below 280 dp Start uses an icon with an accessible label. Main and title-bar controls have 48 dp touch targets.
+- English interface; dates, numbers and clock formatting follow Android locale settings. This release does not include translated UI strings.
+
+Compatibility is designed for Android devices that allow a third-party HOME app. OEM policies, managed devices and unusual launch surfaces can restrict that role. Android TV, Wear OS and Android Auto are outside this launcher's scope. There is no claim that every physical device has been tested; see [TEST_REPORT.md](TEST_REPORT.md).
 
 ## Features
 
-- Default HOME launcher using Android's Home role chooser.
-- Programs explorer with installed-app search; long-press apps to pin/unpin shortcuts or view app information.
-- Profile-aware app launching through LauncherApps. Android-permitted work apps are badged; paused profiles fail gracefully. Samsung Secure Folder / Android Private Space are not supported.
-- Persistent Notepad with Android share-sheet export, arithmetic Calculator, Run program/web lookup, month calendar and Control Panel.
-- Classic teal desktop, five desktop colors, standard/large icons, responsive grid, minimize/restore/maximize/close controls.
-- Portrait, landscape, window resizing, IME, display cutout and navigation inset handling. Main controls use 48 dp touch targets; title-bar buttons are 48 × 44 dp.
-- No ads, analytics, account, network permission, broad package permission or broad file permission. Notes/settings stay in app-private preferences; the manifest sets `allowBackup=false`.
+- Android default-home chooser; Programs explorer with installed-app search, pin/unpin shortcuts and app information.
+- Profile-aware app discovery and launching through LauncherApps. Android-permitted work apps are badged; paused profiles fail gracefully. Secure Folder and Android Private Space are not supported.
+- Autosaving Notepad with share-sheet export, arithmetic Calculator, Run program/web lookup, month calendar and Control Panel.
+- Five desktop colors, standard/large icons, minimize/restore/maximize/close. Notes, current tool, search, calculator and minimized/maximized state survive supported activity recreation. Live resizing and fold changes retain the existing tool view.
+- No ads, analytics, account, network permission, broad package permission or broad file permission. Notes/settings stay in app-private preferences; backup is disabled.
 
-A launcher themes its own screens. It cannot theme Samsung's notification shade, lock screen, recents, permission dialogs, keyboard or other installed apps. This is an Android launcher, not a Windows emulator. Only one built-in tool window is open at once. Window dragging and Android app widgets are not implemented. Recycle Bin explains shortcut removal; it does not manage deleted files. My Documents uses Android's document picker. Third-party launcher gesture animations remain controlled by Samsung.
+The classic theme applies to this launcher's screens. Android settings, notifications, lock screen, recents, keyboard, permission dialogs and installed apps keep their own appearance. Gesture animations are controlled by Android/OEM software. This is an Android launcher, not a Windows emulator. One built-in tool window is open at a time; dragging windows and Android widgets are not implemented. Recycle Bin explains shortcut removal. My Documents opens Android's document picker.
 
-## Download
+## Download and install
 
-[Download the development APK](apk/Retro95-1.0.0.apk?raw=true)
+[Download Retro95-2.0.0.apk](apk/Retro95-2.0.0.apk?raw=true)
 
-See [TEST_REPORT.md](TEST_REPORT.md) for executed checks and remaining Samsung device checks.
+1. Open the APK on an Android 12+ phone or tablet. If prompted, allow installation from the browser or file manager used for this APK. OEM sideloading controls may also apply.
+2. Open **Retro 95 → Control Panel → Set Retro 95 as default launcher** and confirm the Android home chooser.
+3. Open **My Computer** or **Start → Programs** to launch apps; hold an app to pin it.
+4. To return to another launcher, select **Control Panel → Choose another home app**, then your preferred launcher (for example One UI Home or Pixel Launcher). Android's default-apps settings also expose the Home app choice.
 
-## Install on Galaxy S24 Ultra / One UI
+### Upgrading from 1.0
 
-1. Transfer `Retro95-1.0.0.apk` to the phone and open it. Allow installation from the specific browser or file manager if Android requests it. Samsung Auto Blocker may prevent sideloading; use Settings to review that choice and restore your preferred protection afterwards.
-2. Open **Retro 95 → Control Panel → Set Retro 95 as default launcher** and confirm the Android chooser.
-3. Tap **My Computer** or **Start → Programs** to launch apps. Hold an app to pin it.
-4. Return to Samsung at **Control Panel → Choose another home app → One UI Home**, or **Android Settings → Apps → Choose default apps → Home app**.
+The package remains `dev.magesh.win95`, with versionCode 2. The distributed APK uses a development certificate. The original 1.0 private signing key is unavailable, so an installed 1.0 build with a different certificate must first be uninstalled. **Before uninstalling, use Notepad → Share note to export any notes.** Uninstallation erases local notes, pins and settings. Future builds must use the same private signing key for in-place upgrades. Never commit a private keystore.
 
-The delivered build uses a development signing certificate. Keep a stable private signing key for future releases; never commit private keys. A differently signed future APK requires uninstalling this one, which deletes its local notes/settings.
+## Build and verify
 
-## Build
-
-JDK 21 for Android 16 Robolectric tests (production sources compile as Java 17), Gradle 8.13, Android SDK platform 36 and build-tools 36.0.0.
+Requires JDK 21 (Android 16 Robolectric tests; app sources use Java 17), Gradle 8.13, Android SDK platform 36 and build-tools 36.0.0. Jetpack WindowManager 1.5.1 is the runtime folding dependency. Gradle resolves and packages its transitive dependencies.
 
 ```sh
 export ANDROID_HOME=/path/to/android-sdk
 export JAVA_HOME=/path/to/jdk-21
 sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools'
 ./gradlew testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest
+# With an attached Android 12+ device or emulator:
+./gradlew connectedDebugAndroidTest
 ```
 
-The SDK-only fallback avoids third-party runtime/build dependencies beyond JDK and Google's installed SDK tools:
-
-```sh
-./scripts/build-sdk.sh
-./scripts/build-device-tests.sh
-adb install -r app/build/sdk/Retro95-1.0.0.apk
-adb install -r app/build/sdk-tests/tests.apk
-adb shell am instrument -w dev.magesh.win95.test/dev.magesh.win95.LauncherInstrumentation
-```
-
-It builds the same production Java/resources, runs javac → D8 → AAPT2 packaging → zipalign → apksigner, and uses the local Android debug key. Gradle remains the usual development/CI route. APK output: `app/build/sdk/Retro95-1.0.0.apk` or `app/build/outputs/apk/debug/app-debug.apk`.
-
-## Tests
-
-See `TEST_REPORT.md` for checks actually executed and remaining device checks. JUnit calculator tests and Robolectric activity tests live under `app/src/test`; AndroidX and SDK-only device suites live under `app/src/androidTest`. GitHub Actions includes build, unit tests, lint and emulator tests; the presence of the workflow does not mean it has already run.
+APK output: `app/build/outputs/apk/debug/app-debug.apk`. The scripts in `scripts/` delegate to Gradle; v1's dependency-free SDK-only build path no longer applies. GitHub Actions builds the APK and runs emulator suites on API 31, 32, 35 and 36. Layout tests cover narrow phones, large fonts, landscape, tablets, short windows and synthetic folding changes. Synthetic posture tests are not physical foldable certification.
 
 ## Source layout
 
-- `DesktopActivity.java`: desktop, app discovery/launching, windows and tools.
-- `RetroStyle.java`: beveled controls and original pixel-art icons.
-- `Calculator.java`: bounded arithmetic parser using BigDecimal.
-- `scripts/`: SDK build and device verification helpers.
+- `DesktopActivity.java`: desktop, window lifecycle, WindowManager listener, app discovery and built-in tools.
+- `DesktopGeometry.java`: contiguous pane selection for hinges and folds.
+- `RetroStyle.java`: beveled controls and original pixel icons.
+- `Calculator.java`: bounded BigDecimal arithmetic parser.
+- `app/src/test/`: arithmetic, activity, adaptive geometry, recreation and native-render tests.
+- `app/src/androidTest/`: native Android instrumentation checks.
 
-Independent project, not affiliated with Microsoft, Samsung or Google. Windows is a Microsoft trademark. No Microsoft artwork, fonts, operating-system files or binaries are bundled.
-
-## Rendered preview
-
-Android 16 Robolectric native renders (not Samsung device screenshots):
-
-![Classic desktop and Start menu](docs/screenshots/start-menu.png)
-
-![Calculator](docs/screenshots/calculator.png)
+Independent project; not affiliated with Microsoft, Samsung or Google. Windows is a Microsoft trademark. No Microsoft artwork, fonts, operating-system files or binaries are bundled.

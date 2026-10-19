@@ -26,7 +26,13 @@ jobs:
           path: |
             app/build/outputs/apk/debug/*.apk
             app/build/reports/
+            app/build/test-results/
+            app/build/test-screenshots/
   device-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [31, 32, 35, 36]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -48,12 +54,12 @@ jobs:
           sudo udevadm trigger --name-match=kvm
       - uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 36
+          api-level: ${{ matrix.api }}
           arch: x86_64
           target: default
           script: gradle connectedDebugAndroidTest
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: device-test-results
+          name: device-test-results-API${{ matrix.api }}
           path: app/build/reports/androidTests/
