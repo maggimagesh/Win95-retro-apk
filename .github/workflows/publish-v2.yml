@@ -1,0 +1,30 @@
+name: Publish verified v2 APK
+on:
+  push:
+    paths:
+      - '.github/workflows/publish-v2.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retrieve the verified v2 artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download 39268320514 --repo maggimagesh/Win95-retro-apk --name Retro95-APK-and-reports --dir /tmp/verified-v2
+      - name: Verify and publish exact APK
+        run: |
+          echo 'f48df1d80e7be7156d1f81a5ac25a71bbb4f58a11800172890c4652d94775b74  /tmp/verified-v2/outputs/apk/debug/app-debug.apk' | sha256sum --check
+          mkdir -p apk
+          cp /tmp/verified-v2/outputs/apk/debug/app-debug.apk apk/Retro95-2.0.0.apk
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apk/Retro95-2.0.0.apk
+          if ! git diff --cached --quiet; then
+            git commit -m 'Publish verified Retro 95 2.0 APK [skip ci]'
+            git push
+          fi

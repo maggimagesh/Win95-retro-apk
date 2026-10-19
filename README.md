@@ -9,7 +9,7 @@ A native Android HOME launcher with a Windows 95-inspired desktop, Start menu, t
 - Jetpack WindowManager observes folding changes while the activity is started. A separating fold or fully occluding hinge places the desktop, taskbar and tool windows in the largest clear pane, with an 8 dp hinge margin. Top/left wins equal-area ties. This deliberate single-pane layout keeps controls off the hinge; it does not provide two independent desktops. An unfolded, non-separating crease uses the full available screen. Multiple reported barriers are supported.
 - System-bar, display-cutout and keyboard insets reduce the usable desktop. The icon grid reflows with width and font size; tool windows and the scrollable Start menu stay within their workspace.
 - Below 360 dp usable width the taskbar clock is hidden; **Start → Date / Time** remains available. Below 280 dp Start uses an icon with an accessible label. Main and title-bar controls have 48 dp touch targets.
-- English interface; dates, numbers and clock formatting follow Android locale settings. This release does not include translated UI strings.
+- English interface; dates and clock formatting follow Android locale settings. This release does not include translated UI strings.
 
 Compatibility is designed for Android devices that allow a third-party HOME app. OEM policies, managed devices and unusual launch surfaces can restrict that role. Android TV, Wear OS and Android Auto are outside this launcher's scope. There is no claim that every physical device has been tested; see [TEST_REPORT.md](TEST_REPORT.md).
 
