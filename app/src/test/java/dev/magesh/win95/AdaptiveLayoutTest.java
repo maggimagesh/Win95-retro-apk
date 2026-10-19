@@ -34,6 +34,16 @@ public class AdaptiveLayoutTest {
             assertEquals("Fold transition note",((EditText)decor.findViewWithTag("note")).getText().toString());
         }finally{c.pause().stop().destroy();}
     }
+    @Test public void systemInsetsAndKeyboardKeepControlsVisible(){
+        ActivityController<DesktopActivity> c=Robolectric.buildActivity(DesktopActivity.class).setup();
+        try{
+            View decor=c.get().getWindow().getDecorView();layout(decor,840,900);
+            View shell=decor.findViewWithTag("desktop-shell");View root=(View)shell.getParent();
+            root.dispatchApplyWindowInsets(new WindowInsets.Builder().setInsets(WindowInsets.Type.systemBars(),android.graphics.Insets.of(20,24,30,40)).setInsets(WindowInsets.Type.ime(),android.graphics.Insets.of(0,0,0,300)).setVisible(WindowInsets.Type.ime(),true).build());
+            layout(decor,840,900);assertEquals(20,shell.getLeft());assertEquals(24,shell.getTop());assertEquals(810,shell.getRight());assertEquals(600,shell.getBottom());
+            root.dispatchApplyWindowInsets(new WindowInsets.Builder().setInsets(WindowInsets.Type.systemBars(),android.graphics.Insets.of(20,24,30,40)).build());layout(decor,840,900);assertEquals(860,shell.getBottom());
+        }finally{c.pause().stop().destroy();}
+    }
     @Test public void flatCreaseDoesNotShrinkDesktop(){ActivityController<DesktopActivity> c=Robolectric.buildActivity(DesktopActivity.class).setup();try{View decor=c.get().getWindow().getDecorView();layout(decor,840,900);c.get().onWindowLayout(info(new Rect(420,0,420,900),false));layout(decor,840,900);assertEquals(840,decor.findViewWithTag("desktop-shell").getWidth());}finally{c.pause().stop().destroy();}}
     private WindowLayoutInfo info(Rect bounds,boolean separating){
         FoldingFeature fold=new FoldingFeature(){

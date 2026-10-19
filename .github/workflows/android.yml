@@ -20,7 +20,14 @@ jobs:
           gradle-version: '8.13'
       - run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
       - run: gradle testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest
+      - name: Verify APK identity and signature
+        run: |
+          mkdir -p app/build/apk-verification
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/debug/app-debug.apk > app/build/apk-verification/signature.txt
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging app/build/outputs/apk/debug/app-debug.apk > app/build/apk-verification/badging.txt
+          sha256sum app/build/outputs/apk/debug/app-debug.apk > app/build/apk-verification/sha256.txt
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: Retro95-APK-and-reports
           path: |
@@ -28,6 +35,7 @@ jobs:
             app/build/reports/
             app/build/test-results/
             app/build/test-screenshots/
+            app/build/apk-verification/
   device-tests:
     strategy:
       fail-fast: false
