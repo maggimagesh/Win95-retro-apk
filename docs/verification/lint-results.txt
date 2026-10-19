@@ -1,0 +1,87 @@
+/workspace/scratch/8d65e8f93834/win95-launcher/app/src/main/AndroidManifest.xml:6: Warning: Attribute enableOnBackInvokedCallback is only used in API level 33 and higher (current min is 30) [UnusedAttribute]
+        <activity android:name=".DesktopActivity" android:exported="true" android:launchMode="singleTask" android:resizeableActivity="true" android:windowSoftInputMode="adjustResize" android:enableOnBackInvokedCallback="true">
+                                                                                                                                                                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "UnusedAttribute":
+   This check finds attributes set in XML files that were introduced in a
+   version newer than the oldest version targeted by your application (with
+   the minSdkVersion attribute).
+
+   This is not an error; the application will simply ignore the attribute.
+   However, if the attribute is important to the appearance or functionality
+   of your application, you should consider finding an alternative way to
+   achieve the same result with only available attributes, and then you can
+   optionally create a copy of the layout in a layout-vNN folder which will be
+   used on API NN or higher where you can take advantage of the newer
+   attribute.
+
+   Note: This check does not only apply to attributes. For example, some tags
+   can be unused too, such as the new <tag> element in layouts introduced in
+   API 21.
+
+/workspace/scratch/8d65e8f93834/win95-launcher/app/src/main/AndroidManifest.xml:5: Warning: The attribute android:allowBackup is deprecated from Android 12 and higher and may be removed in future versions. Consider adding the attribute android:dataExtractionRules specifying an @xml resource which configures cloud backups and device transfers on Android 12 and higher. [DataExtractionRules]
+    <application android:label="Retro 95" android:icon="@drawable/ic_launcher" android:theme="@style/AppTheme" android:allowBackup="false" android:supportsRtl="true">
+                                                                                                                                    ~~~~~
+
+   Explanation for issues of type "DataExtractionRules":
+   Before Android 12, the attributes android:allowBackup and
+   android:fullBackupContent were used to configure all forms of backup,
+   including cloud backups, device-to-device transfers and adb backup.
+
+   In Android 12 and higher, these attributes have been deprecated and will
+   only apply to cloud backups. You should instead use the attribute
+   android:dataExtractionRules, specifying an @xml resource that configures
+   which files to back up, for cloud backups and for device-to-device
+   transfers, separately. If your minSdkVersion supports older versions,
+   you'll still want to specify an android:fullBackupContent resource if the
+   default behavior is not right for your app.
+
+   https://developer.android.com/about/versions/12/backup-restore#xml-changes
+   https://goo.gle/DataExtractionRules
+
+/workspace/scratch/8d65e8f93834/win95-launcher/app/src/main/java/dev/magesh/win95/RetroStyle.java:46: Warning: Custom view PixelIcon is missing constructor used by tools: (Context) or (Context,AttributeSet) or (Context,AttributeSet,int) [ViewConstructor]
+    static final class PixelIcon extends View {
+                       ~~~~~~~~~
+
+   Explanation for issues of type "ViewConstructor":
+   Some layout tools (such as the Android layout editor) need to find a
+   constructor with one of the following signatures:
+   * View(Context context)
+   * View(Context context, AttributeSet attrs)
+   * View(Context context, AttributeSet attrs, int defStyle)
+
+   If your custom view needs to perform initialization which does not apply
+   when used in a layout editor, you can surround the given code with a check
+   to see if View#isInEditMode() is false, since that method will return false
+   at runtime but true within a user interface editor.
+
+/workspace/scratch/8d65e8f93834/win95-launcher/app/src/main/java/dev/magesh/win95/DesktopActivity.java:207: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+        watch(note,s->{prefs.edit().putString("note",s).apply();status.setText("Saved on this device · "+s.length()+" characters");});
+                                                                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/scratch/8d65e8f93834/win95-launcher/app/src/main/java/dev/magesh/win95/DesktopActivity.java:207: Warning: String literal in setText can not be translated. Use Android resources instead. [SetTextI18n]
+        watch(note,s->{prefs.edit().putString("note",s).apply();status.setText("Saved on this device · "+s.length()+" characters");});
+                                                                               ~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/scratch/8d65e8f93834/win95-launcher/app/src/main/java/dev/magesh/win95/DesktopActivity.java:207: Warning: String literal in setText can not be translated. Use Android resources instead. [SetTextI18n]
+        watch(note,s->{prefs.edit().putString("note",s).apply();status.setText("Saved on this device · "+s.length()+" characters");});
+                                                                                                                    ~~~~~~~~~~~~~
+/workspace/scratch/8d65e8f93834/win95-launcher/app/src/main/java/dev/magesh/win95/DesktopActivity.java:214: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+        for(String[] line:keys){LinearLayout row=horizontal();windowBody.addView(row);for(String key:line){Button b=button(this,key);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,d(52),1);p.setMargins(d(2),d(2),d(2),d(2));row.addView(b,p);b.setOnClickListener(v->{String val=display.getText().toString();error.setText("");switch(key){case "C":display.setText("");break;case "⌫":display.setText(val.isEmpty()?"":val.substring(0,val.length()-1));break;case "=":try{display.setText(Calculator.evaluate(val));}catch(RuntimeException e){error.setText("Invalid calculation or division by zero");}break;default:if(val.length()<200)display.setText(val+key);}display.setSelection(display.length());});}}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              ~~~~~~~
+/workspace/scratch/8d65e8f93834/win95-launcher/app/src/main/java/dev/magesh/win95/DesktopActivity.java:214: Warning: String literal in setText can not be translated. Use Android resources instead. [SetTextI18n]
+        for(String[] line:keys){LinearLayout row=horizontal();windowBody.addView(row);for(String key:line){Button b=button(this,key);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,d(52),1);p.setMargins(d(2),d(2),d(2),d(2));row.addView(b,p);b.setOnClickListener(v->{String val=display.getText().toString();error.setText("");switch(key){case "C":display.setText("");break;case "⌫":display.setText(val.isEmpty()?"":val.substring(0,val.length()-1));break;case "=":try{display.setText(Calculator.evaluate(val));}catch(RuntimeException e){error.setText("Invalid calculation or division by zero");}break;default:if(val.length()<200)display.setText(val+key);}display.setSelection(display.length());});}}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "SetTextI18n":
+   When calling TextView#setText
+   * Never call Number#toString() to format numbers; it will not handle
+   fraction separators and locale-specific digits properly. Consider using
+   String#format with proper format specifications (%d or %f) instead.
+   * Do not pass a string literal (e.g. "Hello") to display text. Hardcoded
+   text can not be properly translated to other languages. Consider using
+   Android resource strings instead.
+   * Do not build messages by concatenating text chunks. Such messages can not
+   be properly translated.
+
+   https://developer.android.com/guide/topics/resources/localization.html
+
+0 errors, 8 warnings

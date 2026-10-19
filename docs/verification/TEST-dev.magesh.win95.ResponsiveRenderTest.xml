@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.magesh.win95.ResponsiveRenderTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-19T08:55:58.996Z" hostname="bdcbcf26b152" time="30.815">
+  <properties/>
+  <testcase name="s24Portrait" classname="dev.magesh.win95.ResponsiveRenderTest" time="19.582"/>
+  <testcase name="largeFont" classname="dev.magesh.win95.ResponsiveRenderTest" time="4.569"/>
+  <testcase name="compact" classname="dev.magesh.win95.ResponsiveRenderTest" time="2.853"/>
+  <testcase name="landscape" classname="dev.magesh.win95.ResponsiveRenderTest" time="3.81"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[Invalid ID 0x00000000.
+Invalid ID 0x00000000.
+Invalid ID 0x00000000.
+Invalid ID 0x00000000.
+]]></system-err>
+</testsuite>

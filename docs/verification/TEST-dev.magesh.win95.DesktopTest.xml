@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.magesh.win95.DesktopTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-19T08:55:41.614Z" hostname="bdcbcf26b152" time="17.191">
+  <properties/>
+  <testcase name="minimizedWindowSurvivesRecreation" classname="dev.magesh.win95.DesktopTest" time="13.004"/>
+  <testcase name="startMenuToggles" classname="dev.magesh.win95.DesktopTest" time="0.346"/>
+  <testcase name="notesPersistAcrossClose" classname="dev.magesh.win95.DesktopTest" time="0.527"/>
+  <testcase name="allToolsCanOpenAndClose" classname="dev.magesh.win95.DesktopTest" time="1.221"/>
+  <testcase name="minimizeAndTaskRestore" classname="dev.magesh.win95.DesktopTest" time="0.388"/>
+  <testcase name="calculatorErrorsDontCrash" classname="dev.magesh.win95.DesktopTest" time="0.931"/>
+  <testcase name="searchSurvivesRecreation" classname="dev.magesh.win95.DesktopTest" time="0.771"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[Invalid ID 0x00000000.
+Invalid ID 0x00000000.
+Invalid ID 0x00000000.
+Invalid ID 0x00000000.
+Invalid ID 0x00000000.
+Invalid ID 0x00000000.
+Invalid ID 0x00000000.
+Invalid ID 0x00000000.
+Invalid ID 0x00000000.
+]]></system-err>
+</testsuite>
